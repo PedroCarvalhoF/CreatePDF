@@ -26,5 +26,22 @@ namespace CreatePDF
 
             return titulo;
         }
+
+        public static iTextSharp.text.Font FontCelulaTabela(int tamanhoDocumento)
+        {
+            var titulo = FontFactory.GetFont("Arial", 12, iTextSharp.text.Font.NORMAL);
+
+            switch (tamanhoDocumento)
+            {
+                case 1:
+                    titulo = FontFactory.GetFont("Arial", 8, iTextSharp.text.Font.NORMAL);
+                    break;
+
+                default:
+                    break;
+            }
+
+            return titulo;
+        }
     }
 }

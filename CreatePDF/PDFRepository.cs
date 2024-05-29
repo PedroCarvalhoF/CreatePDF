@@ -1,5 +1,6 @@
 ﻿using iTextSharp.text;
 using iTextSharp.text.pdf;
+using iTextSharp.text.pdf.draw;
 
 namespace CreatePDF
 {
@@ -26,8 +27,10 @@ namespace CreatePDF
         /// <returns></returns>
         public PDFRepository(string nomeArquivo, int tamanho)
         {
+            //futuramente teremos outros padroes de tamanha , como por exemplo A4, etc.
+            //criarei enum
             tamanho_documento = tamanho;
-            nomeArquivo = DateTime.Now.ToString(format: "ddMMyyyyffff_") + nomeArquivo;
+
             CriarPDF(nomeArquivo, tamanho);
         }
         public Document CriarPDF(string nomeArquivo, int tamanho)
@@ -48,10 +51,10 @@ namespace CreatePDF
 
         private Document GerarPDF_BobinaTermica(string nomeArquivo)
         {
-            // Largura e altura da bobina em milímetros
-            float larguraBobinaMm = 80;
-            float alturaBobinaMm = 297; // altura pode ser ajustada conforme necessário
-            float margemMm = 5; // margem em milímetros
+            
+            float larguraBobinaMm = 80; // Largura e altura da bobina em milimetros
+            float alturaBobinaMm = 297; // altura pode ser ajustaada conforme necessario
+            float margemMm = 5; // margem em milimetros
 
             // Convertendo milímetros para pontos
             float larguraBobinaPts = larguraBobinaMm * 72 / 25.4F;
@@ -92,6 +95,110 @@ namespace CreatePDF
             if (!_pdf.IsOpen())
                 _pdf.Open();
             _pdf.Add(paragrafo);
+        }
+
+
+        public PdfPTable CriarTabela(int qtd_colunas)
+        {
+            // Cria uma tabela com o número de colunas especificado
+            PdfPTable tabela = new PdfPTable(qtd_colunas);
+
+            // Define a largura da tabela como 100% da largura da página
+            tabela.WidthPercentage = 100;
+
+            // Definindo margens entre as células
+            tabela.SpacingBefore = 5f; // Espaço antes da tabela
+            tabela.SpacingAfter = 5f; // Espaço após a tabela
+
+            return tabela;
+        }
+
+        /// <summary>
+        /// ALIGN_CENTER = 1;
+        /// ALIGN_LEFT = 0;
+        /// ALIGN_RIGHT = 2;
+        /// ALIGN_JUSTIFIED_ALL = 8
+        /// 
+        /// </summary>
+        /// <param name="horizontalAlignment"></param>
+        /// <param name="verticalAlingnment"></param>
+        /// <param name="fonteCelula">campo obrigatorio</param>
+
+        public PdfPCell CriarCelulaTabela(string textoCelula, int horizontalAlignment = 0, int verticalAlingnment = 1, iTextSharp.text.Font fonteCelula = null)
+        {
+            if (fonteCelula == null)
+                fonteCelula = FontesPDF.FontCelulaTabela(tamanho_documento);
+
+            PdfPCell celula = new PdfPCell(new Phrase(textoCelula, fonteCelula));
+            celula.HorizontalAlignment = horizontalAlignment;
+            celula.VerticalAlignment = verticalAlingnment;
+
+            celula.BorderWidth = 0.2f;
+
+            celula.BorderColor = iTextSharp.text.BaseColor.Black;
+            celula.FixedHeight = 15;
+
+            return celula;
+        }
+        public PdfPTable AdicinarCelulaTabela(PdfPCell celula, PdfPTable tabela)
+        {
+            tabela.AddCell(celula);
+            AtualizarTamanhoColunas(tabela);
+            return tabela;
+        }
+        private void AtualizarTamanhoColunas(PdfPTable tabela)
+        {
+            // Percorrer todas as células da tabela para determinar a maior largura em cada coluna
+            float[] largurasColunas = new float[tabela.NumberOfColumns];
+            foreach (PdfPRow linha in tabela.Rows)
+            {
+                for (int i = 0; i < linha.GetCells().Length; i++)
+                {
+                    PdfPCell celula = linha.GetCells()[i];
+                    float larguraCelula = GetLarguraCelula(celula); // Obter a largura da célula
+                    if (larguraCelula > largurasColunas[i])
+                    {
+                        largurasColunas[i] = larguraCelula;
+                    }
+                }
+            }
+
+            // Definir a largura de cada coluna de acordo com a maior largura em cada coluna
+            tabela.SetWidths(largurasColunas);
+        }
+        private float GetLarguraCelula(PdfPCell celula)
+        {
+            // Calcular a largura do conteúdo da célula
+            Phrase conteudo = celula.Phrase;
+            if (conteudo == null)
+                return 0;
+
+            float larguraConteudo = 0;
+            foreach (Chunk chunk in conteudo.Chunks)
+            {
+                BaseFont fonte = chunk.Font.GetCalculatedBaseFont(false);
+                larguraConteudo += fonte.GetWidthPoint(chunk.Content, chunk.Font.Size);
+            }
+
+            // Adicionar padding
+            larguraConteudo += celula.PaddingLeft + celula.PaddingRight;
+
+            return larguraConteudo;
+        }
+        public void AdicionarTabelaPDF(PdfPTable tabela)
+        {
+            if (!_pdf.IsOpen())
+                _pdf.Open();
+            _pdf.Add(tabela);
+        }
+
+
+        public void DivPDF()
+        {
+            if (!_pdf.IsOpen())
+                _pdf.Open();
+            LineSeparator linha = new LineSeparator(1f, 100f, BaseColor.Black, Element.ALIGN_CENTER, -1);
+            _pdf.Add(linha);
         }
     }
 }
